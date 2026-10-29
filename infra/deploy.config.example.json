@@ -15,5 +15,6 @@
   "customDomainCertificateArn": "",
   "webSearchEnabled": true,
   "bffPlatform": "web-functions",
-  "modelId": "jp.anthropic.claude-haiku-5-5"
+  "modelId": "jp.anthropic.claude-haiku-5-5",
+  "enableDiagnostics": false
 }

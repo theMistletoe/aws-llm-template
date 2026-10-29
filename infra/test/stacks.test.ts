@@ -114,6 +114,7 @@ describe('default deployment (all optional features OFF)', () => {
   it('ApiStack: Web Function behind IAM auth, BFF has no direct model access', () => {
     const t = stack('Api');
     t.hasResourceProperties('AWS::Lambda::WebFunctionEndpoint', { AuthType: 'IamAuth', EndpointType: 'HomeRegion' });
+    t.hasResource('AWS::Lambda::WebFunctionRevision', { DeletionPolicy: 'Retain', UpdateReplacePolicy: 'Retain' });
     t.hasResourceProperties('AWS::Lambda::WebFunctionRevision', {
       BuildConfig: Match.objectLike({ RuntimeConfig: { Runtime: 'nodejs24.x' } }),
       ServiceConfig: Match.objectLike({

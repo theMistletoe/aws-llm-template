@@ -32,9 +32,9 @@
     "build:agent": "tsx scripts/build-agent.ts",
     "cdk:synth": "pnpm build && pnpm --filter infra cdk:synth",
     "cdk:diff": "pnpm build && pnpm --filter infra cdk:diff",
-    "deploy": "tsx scripts/deploy.ts",
     "smoke": "tsx scripts/smoke.ts",
-    "delete-user": "tsx scripts/delete-user.ts"
+    "delete-user": "tsx scripts/delete-user.ts",
+    "deploy:aws": "tsx scripts/deploy.ts"
   },
   "devDependencies": {
     "@ai-chat/agent-contracts": "workspace:*",

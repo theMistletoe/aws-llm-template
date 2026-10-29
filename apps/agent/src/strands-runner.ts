@@ -19,6 +19,8 @@ export type StrandsRunnerOptions = {
   inputBudgetChars: number;
   timeZone?: string;
   now?: () => Date;
+  /** 失敗の分類をログに出す（本文・入力値は渡さない） */
+  log?: (event: string, fields: Record<string, unknown>) => void;
 };
 
 type ContextMessage = AgentInvokeRequest['context'][number];
@@ -62,13 +64,18 @@ export function buildSystemPrompt(params: { now: Date; timeZone: string; searchE
   return lines.join('\n');
 }
 
-function classifyError(e: unknown): { code: string; retryable: boolean } {
-  const names = new Set<string>();
+export function errorChain(e: unknown): string[] {
+  const names: string[] = [];
   let cur: unknown = e;
   for (let depth = 0; cur && depth < 4; depth++) {
-    names.add(String((cur as { name?: unknown }).name ?? ''));
+    names.push(String((cur as { name?: unknown }).name ?? 'Unknown'));
     cur = (cur as { cause?: unknown }).cause;
   }
+  return names;
+}
+
+function classifyError(e: unknown): { code: string; retryable: boolean } {
+  const names = new Set(errorChain(e));
   if (names.has('ThrottlingException') || names.has('ServiceQuotaExceededException') || names.has('ServiceUnavailableException')) {
     return { code: 'MODEL_THROTTLED', retryable: true };
   }
@@ -191,7 +198,10 @@ async function* runStrands(
   } catch (e) {
     if (e instanceof MaxTokensError || hitMaxTokens) reason = 'max_tokens';
     else if (signal.aborted) reason = 'cancelled';
-    else failure = classifyError(e);
+    else {
+      failure = classifyError(e);
+      options.log?.('model_invocation_failed', { errorClasses: errorChain(e), code: failure.code });
+    }
   }
 
   yield { type: 'usage', inputTokens, outputTokens, searchCalls };

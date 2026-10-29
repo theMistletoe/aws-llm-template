@@ -106,10 +106,10 @@ export class ApiStack extends Stack {
       OTP_MAX_PER_HOUR: String(config.otp.maxPerHour),
       AUTH_MIN_RESPONSE_MS: String(config.otp.minResponseMs),
       LOG_LEVEL: 'info',
+      ...(settings.enableDiagnostics ? { DIAGNOSTICS_ENABLED: 'true' } : {}),
     };
 
     if (settings.bffPlatform === 'web-functions') {
-      const codePrefix = 'bff/';
       const codeBucket = new s3.Bucket(this, 'CodeBucket', {
         versioned: true,
         encryption: s3.BucketEncryption.S3_MANAGED,
@@ -121,17 +121,17 @@ export class ApiStack extends Stack {
         new iam.PolicyStatement({
           principals: [new iam.ServicePrincipal('lambda.amazonaws.com')],
           actions: ['s3:GetObject', 's3:GetObjectVersion'],
-          resources: [codeBucket.arnForObjects(`${codePrefix}*`)],
+          resources: [codeBucket.arnForObjects('*')],
           conditions: {
             ArnLike: { 'aws:SourceArn': `arn:${Aws.PARTITION}:lambda:${Aws.REGION}:${Aws.ACCOUNT_ID}:web-function/${functionName}/revision/*` },
           },
         }),
       );
       // 旧Revisionが参照するZIPを消さない（prune: false）。ロールバックに使う（§11.4）
+      // objectKeys はプレフィックスを含まないため、バケット直下に置く
       const code = new s3deploy.BucketDeployment(this, 'CodeUpload', {
         sources: [s3deploy.Source.asset(props.apiDistDir)],
         destinationBucket: codeBucket,
-        destinationKeyPrefix: codePrefix,
         extract: false,
         prune: false,
         retainOnDelete: true,
@@ -159,6 +159,8 @@ export class ApiStack extends Stack {
         },
       });
       revision.node.addDependency(codeBucket.policy!, role, code);
+      // コード変更でRevisionは置き換わる。旧Revisionを残し、Endpointの重みを戻すだけで切り戻せるようにする（§11.4）
+      revision.applyRemovalPolicy(RemovalPolicy.RETAIN);
       const endpoint = new lambda.CfnWebFunctionEndpoint(this, 'Endpoint', {
         functionName: webFn.ref,
         endpointName: settings.stage,

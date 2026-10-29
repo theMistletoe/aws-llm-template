@@ -17,3 +17,5 @@ infra/cdk.context.json
 *.log
 .DS_Store
 .e2e/
+infra/cdk-outputs.json
+infra/cdk-outputs.latest.json

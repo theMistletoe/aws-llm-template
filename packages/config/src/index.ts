@@ -90,6 +90,7 @@ const apiEnvSchema = z.object({
   OTP_COOLDOWN_SECONDS: int(60, 0),
   OTP_MAX_PER_HOUR: int(5, 1),
   AUTH_MIN_RESPONSE_MS: int(0, 0),
+  DIAGNOSTICS_ENABLED: bool(false),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
 });
 
@@ -132,6 +133,8 @@ export type ApiConfig = {
     authFlowTtlSeconds: number;
   };
   otp: { cooldownSeconds: number; maxPerHour: number; minResponseMs: number };
+  /** PoC用の診断エンドポイント（SSEの長時間接続確認）。既定OFF */
+  diagnosticsEnabled: boolean;
   logLevel: 'debug' | 'info' | 'warn' | 'error';
 };
 
@@ -202,6 +205,7 @@ export function loadApiConfig(env: Env = process.env): ApiConfig {
       maxPerHour: e.OTP_MAX_PER_HOUR,
       minResponseMs: e.AUTH_MIN_RESPONSE_MS,
     },
+    diagnosticsEnabled: e.DIAGNOSTICS_ENABLED,
     logLevel: e.LOG_LEVEL,
   };
 

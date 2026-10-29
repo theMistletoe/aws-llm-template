@@ -8,6 +8,7 @@ import { requestContext } from './middleware/request-context';
 import { requireSession } from './middleware/session';
 import { authRoutes } from './routes/auth';
 import { chatRoutes } from './routes/chats';
+import { diagnosticsRoutes } from './routes/diagnostics';
 
 /**
  * Hono app定義（実行基盤非依存）。AWS（Web Functions / Function URL）とlocalで同じルーティングを使い、
@@ -33,5 +34,6 @@ export function createApp(deps: AppDeps) {
   app.route('/api/auth', authRoutes(deps));
   app.use('/api/v1/*', requireSession(deps));
   app.route('/api/v1', chatRoutes(deps));
+  if (deps.config.diagnosticsEnabled) app.route('/api/v1/diagnostics', diagnosticsRoutes(deps));
   return app;
 }

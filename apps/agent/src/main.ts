@@ -33,6 +33,8 @@ const runner = createStrandsRunner({
   ...(search ? { search } : {}),
   limits: config.search,
   inputBudgetChars: config.inputBudgetChars,
+  log: (event, fields) =>
+    process.stdout.write(`${JSON.stringify({ timestamp: new Date().toISOString(), level: 'error', event, ...fields })}\n`),
 });
 
 serve({ fetch: createAgentApp({ runner }).fetch, hostname: '0.0.0.0', port: config.port });

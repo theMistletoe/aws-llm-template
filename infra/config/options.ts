@@ -29,6 +29,8 @@ export const defaultDeployOptions: DeployOptions = {
 
 /** 環境ごとの値（メールアドレス・ドメイン等）。git管理外の infra/deploy.config.json か環境変数で与える */
 export type DeploySettings = DeployOptions & {
+  /** PoC用の診断エンドポイント（SSE長時間接続の確認）。既定false。検証後は必ずOFFに戻す */
+  enableDiagnostics?: boolean;
   sesFromEmail: string;
   createSesIdentity: boolean;
   alarmEmail?: string;
@@ -66,6 +68,7 @@ export function loadDeploySettings(env: NodeJS.ProcessEnv = process.env, file = 
     createSesIdentity: bool(get('createSesIdentity', 'CHAT_APP_CREATE_SES_IDENTITY'), false),
     budgetMonthlyUsd: Number(get('budgetMonthlyUsd', 'CHAT_APP_BUDGET_USD') ?? 50),
     modelId: String(get('modelId', 'CHAT_APP_MODEL_ID') ?? 'jp.anthropic.claude-haiku-5-5'),
+    enableDiagnostics: bool(get('enableDiagnostics', 'CHAT_APP_ENABLE_DIAGNOSTICS'), false),
   };
   const optional = (key: keyof DeploySettings, envKey: string) => {
     const v = get(key, envKey);
