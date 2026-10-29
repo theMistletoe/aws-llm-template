@@ -1,0 +1,16 @@
+{
+  "keywords": [],
+  "results": [
+    {
+      "title": "ローカル検索fixture: 今日のニュース",
+      "url": "https://example.com/news/local-fixture",
+      "snippet": "これはローカル開発用の固定の検索結果です。実際のWeb検索は行っていません。",
+      "publishedDate": "2026-10-28"
+    },
+    {
+      "title": "ローカル検索fixture: 参考資料",
+      "url": "https://example.org/reference",
+      "snippet": "Web検索のUIと出典表示を確認するための固定データです。"
+    }
+  ]
+}

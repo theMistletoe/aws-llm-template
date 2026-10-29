@@ -1,0 +1,38 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "packages/config"
+    },
+    {
+      "path": "packages/contracts"
+    },
+    {
+      "path": "packages/agent-contracts"
+    },
+    {
+      "path": "packages/auth"
+    },
+    {
+      "path": "packages/aws-clients"
+    },
+    {
+      "path": "packages/test-fixtures"
+    },
+    {
+      "path": "apps/api"
+    },
+    {
+      "path": "apps/agent"
+    },
+    {
+      "path": "apps/web"
+    },
+    {
+      "path": "tsconfig.tools.json"
+    },
+    {
+      "path": "infra"
+    }
+  ]
+}

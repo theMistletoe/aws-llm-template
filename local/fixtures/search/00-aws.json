@@ -1,0 +1,17 @@
+{
+  "keywords": ["aws", "agentcore", "bedrock", "amazon"],
+  "results": [
+    {
+      "title": "Amazon Bedrock AgentCore 開発者ガイド（ローカルfixture）",
+      "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/what-is-bedrock-agentcore.html",
+      "snippet": "これはローカル開発用の固定データです。AgentCoreはエージェントを安全に大規模運用するためのサービス群です。",
+      "publishedDate": "2026-10-01"
+    },
+    {
+      "title": "AgentCore Gateway Web Search Tool（ローカルfixture）",
+      "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/gateway-target-connector-web-search-tool.html",
+      "snippet": "これはローカル開発用の固定データです。Web Search connector を Gateway のターゲットとして追加できます。",
+      "publishedDate": "2026-09-15"
+    }
+  ]
+}

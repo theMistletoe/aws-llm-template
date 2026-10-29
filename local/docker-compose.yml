@@ -1,0 +1,22 @@
+# ローカルAWSエミュレーター（§11.1）。タグ＋ダイジェストで固定する。
+# 状態はグレースフル停止時にのみ保存される（`pnpm infra:local:down` / docker stop）。
+name: ai-chat-local
+services:
+  ministack:
+    image: ministackorg/ministack:1.5.33@sha256:b58186186515a372798ccf0ca9975c295db219b5a811975337d6967b968e07b4
+    ports: ["127.0.0.1:4566:4566"]
+    environment:
+      PERSIST_STATE: "1"
+      STATE_DIR: /tmp/ministack-state
+      SERVICES: dynamodb,sts
+      LOG_LEVEL: WARNING
+    volumes:
+      - ministack-state:/tmp/ministack-state
+    stop_grace_period: 15s
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4566/_ministack/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+volumes:
+  ministack-state: {}

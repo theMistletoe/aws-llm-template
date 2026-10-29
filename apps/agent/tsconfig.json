@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": ".tsbuild",
+    "lib": ["ES2023", "DOM"]
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../../packages/agent-contracts" },
+    { "path": "../../packages/config" },
+    { "path": "../../packages/contracts" },
+    { "path": "../../packages/test-fixtures" }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "name": "@ai-chat/auth",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./cognito": "./src/cognito.ts",
+    "./dev": "./src/dev-auth.ts"
+  },
+  "scripts": {
+    "test:unit": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "3.1157.0",
+    "aws-jwt-verify": "5.2.1"
+  },
+  "devDependencies": {
+    "vitest": "5.0.5"
+  }
+}

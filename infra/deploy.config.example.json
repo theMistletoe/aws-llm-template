@@ -1,0 +1,19 @@
+{
+  "$comment": "infra/deploy.config.json にコピーして編集（git管理外）。値は環境変数 CHAT_APP_* でも上書きできます。",
+  "stage": "dev",
+  "sesFromEmail": "no-reply@example.com",
+  "createSesIdentity": false,
+  "alarmEmail": "",
+  "enableWaf": false,
+  "enableBudgets": false,
+  "budgetMonthlyUsd": 50,
+  "budgetEmail": "",
+  "enableCiCd": false,
+  "githubRepository": "owner/repo",
+  "useCustomDomain": false,
+  "customDomainName": "",
+  "customDomainCertificateArn": "",
+  "webSearchEnabled": true,
+  "bffPlatform": "web-functions",
+  "modelId": "jp.anthropic.claude-haiku-5-5"
+}

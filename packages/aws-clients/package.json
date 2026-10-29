@@ -1,0 +1,19 @@
+{
+  "name": "@ai-chat/aws-clients",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test:unit": "vitest run"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "3.1157.0",
+    "@aws-sdk/lib-dynamodb": "3.1157.0"
+  },
+  "devDependencies": {
+    "vitest": "5.0.5"
+  }
+}

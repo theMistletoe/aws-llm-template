@@ -1,0 +1,8 @@
+packages:
+  - apps/*
+  - packages/*
+  - infra
+
+# ビルドスクリプトの実行を許可する依存（pnpm 10+ は既定で拒否）
+allowBuilds:
+  esbuild: true

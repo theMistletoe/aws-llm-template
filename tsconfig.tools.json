@@ -1,0 +1,24 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": ".tsbuild/tools",
+    "lib": ["ES2023", "DOM"]
+  },
+  "include": [
+    "local/**/*.ts",
+    "scripts/**/*.ts",
+    "tests/**/*.ts",
+    "e2e.config.ts",
+    "apps/*/vitest.config.ts",
+    "apps/web/vite.config.ts"
+  ],
+  "exclude": ["tests/e2e-exploratory/**"],
+  "references": [
+    { "path": "apps/api" },
+    { "path": "apps/agent" },
+    { "path": "packages/contracts" },
+    { "path": "packages/agent-contracts" },
+    { "path": "packages/test-fixtures" }
+  ]
+}
