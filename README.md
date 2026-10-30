@@ -94,7 +94,7 @@ docs/           ADR、脅威モデル、運用、独自ドメイン移行、プ�
 詳細は [`docs/operations.md`](docs/operations.md)。
 
 1. IAM Identity Center 等でログインし、東京リージョン・Bedrock の選定モデル・推論プロファイルが使えるか、SCP でリージョンを制限していないかを確認する。
-2. **SES**: 送信元メールアドレス（またはドメイン）を検証する。**本番公開前にサンドボックス解除を申請**する（サンドボックス中は検証済みアドレスにしか送れません）。
+2. **SES**: 送信元メールアドレス（またはドメイン）を検証する。**本番公開前にサンドボックス解除を申請**する（サンドボックス中は検証済みアドレスにしか送れません）。送信元ドメインの DMARC が `p=reject` だと OTP メールが拒否されるため、自分のドメインを Easy DKIM 付きで検証して使うのが確実です（[運用手順](docs/operations.md)）。
 3. `cp infra/deploy.config.example.json infra/deploy.config.json` で `sesFromEmail` 等を設定（git管理外）。
 4. `pnpm test` → `pnpm cdk:diff` → `cdk bootstrap`（初回のみ）→ `pnpm deploy:aws`。
 5. `pnpm smoke`、`pnpm test:aws-smoke` で受入確認し、出力された `AppUrl` を開く。

@@ -14,6 +14,8 @@ pnpm test:aws-smoke                  # AWS dev 受入試験（メール受信が
 
 - 初回のみ: `cdk bootstrap aws://<account>/ap-northeast-1`（WAF・独自ドメイン証明書を使う場合は `us-east-1` も）。
 - SES: 送信元アドレス（またはドメイン）を検証し、本番公開前にサンドボックス解除を申請する。サンドボックス中は検証済みアドレスにしか送信できない。
+- **送信元ドメインの DMARC に注意**: 送信元ドメインが `p=reject`（例: 多くの使い捨てメールのドメイン）だと、SES から送った OTP メールは Gmail 等で拒否される（SES の Bounce メトリクスに出る）。自分のドメインを SES で検証して Easy DKIM の CNAME を DNS に追加し、そのドメインのアドレスを `sesFromEmail` にするのが確実。Gmail 等のフリーメールを送信元にすると届くが、迷惑メール扱いになりやすい。
+- OTP メールが届かない場合: BFF ログの `otp_sent`（Cognito が受け付けたか）→ CloudWatch `AWS/SES` の `Send` / `Delivery` / `Bounce` → 迷惑メールフォルダの順に確認する。
 - Bedrock: 選定モデル（既定 `jp.anthropic.claude-haiku-5-5`）が利用可能か、組織のSCPでリージョン制限していないか確認する（推論プロファイルは転送先リージョンの許可が必要）。
 
 ## ロールバック
