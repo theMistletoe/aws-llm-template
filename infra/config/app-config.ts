@@ -1,14 +1,13 @@
 import type { DeploySettings } from './options';
 
 /**
- * アプリ設定値（§9.2）。モデルID・クォータ・アイドルタイムアウト等をここに集約し、
+ * アプリ設定値（§9.2）。モデルID・生成の上限・アイドルタイムアウト等をここに集約し、
  * 環境変数として BFF / AgentCore Runtime へ渡す。変更はgit履歴で監査できる。
  */
 export function appConfig(settings: DeploySettings) {
   return {
     appName: 'chat-app',
     modelId: settings.modelId,
-    quota: { dailyRequests: 20, hourlyRequests: 10, dailySearches: 20, timeZone: 'Asia/Tokyo', usageRetentionDays: 90 },
     generation: {
       timeoutMs: 120_000,
       agentReadTimeoutMs: 130_000,

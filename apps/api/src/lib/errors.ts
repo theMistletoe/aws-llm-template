@@ -25,8 +25,6 @@ export const errors = {
   chatBusy: () =>
     new AppError('CHAT_BUSY', 409, '応答を生成中です。生成を停止してから操作してください', { retryable: true }),
   duplicateRequest: () => new AppError('DUPLICATE_REQUEST', 409, 'このリクエストは既に処理されています'),
-  quotaExceeded: (retryAfter: string) =>
-    new AppError('QUOTA_EXCEEDED', 429, '利用上限に達しました', { retryable: true, retryAfter }),
   rateLimited: (retryAfter: string) =>
     new AppError('RATE_LIMITED', 429, 'しばらく待ってから再度お試しください', { retryable: true, retryAfter }),
   invalidCode: () => new AppError('INVALID_CODE', 400, '確認コードが正しくありません', { retryable: true }),

@@ -145,32 +145,12 @@ export const messageListSchema = z.object({
 });
 export type MessageList = z.infer<typeof messageListSchema>;
 
-export const usageSchema = z.object({
-  timeZone: z.string(),
-  daily: z.object({
-    date: z.string(),
-    requests: z.number(),
-    requestLimit: z.number(),
-    searches: z.number(),
-    searchLimit: z.number(),
-    resetsAt: z.string(),
-  }),
-  hourly: z.object({
-    hour: z.string(),
-    requests: z.number(),
-    requestLimit: z.number(),
-    resetsAt: z.string(),
-  }),
-});
-export type Usage = z.infer<typeof usageSchema>;
-
 export const ERROR_CODES = [
   'UNAUTHENTICATED',
   'FORBIDDEN_ORIGIN',
   'NOT_FOUND',
   'CHAT_BUSY',
   'DUPLICATE_REQUEST',
-  'QUOTA_EXCEEDED',
   'INVALID_CODE',
   'AUTH_FLOW_EXPIRED',
   'RATE_LIMITED',
@@ -187,7 +167,7 @@ export const apiErrorSchema = z.object({
     message: z.string(),
     requestId: z.string(),
     retryable: z.boolean(),
-    /** QUOTA_EXCEEDED / RATE_LIMITED 時、再開可能時刻（ISO 8601） */
+    /** RATE_LIMITED 時、再開可能時刻（ISO 8601） */
     retryAfter: z.string().optional(),
     details: z.array(z.object({ path: z.string(), message: z.string() })).optional(),
   }),

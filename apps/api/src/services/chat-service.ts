@@ -1,7 +1,6 @@
-import { DEFAULT_CHAT_TITLE, type Chat, type ChatList, type MessageList, type Usage } from '@ai-chat/contracts';
+import { DEFAULT_CHAT_TITLE, type Chat, type ChatList, type MessageList } from '@ai-chat/contracts';
 import type { AppDeps } from '../deps';
 import { errors } from '../lib/errors';
-import { dayKey, hourKey, nextDayStart, nextHourStart } from '../lib/time';
 import { isUlid } from '../lib/validation';
 import { toChat, toMessage, type ChatMetaItem } from '../repositories/chat-repository';
 
@@ -73,30 +72,5 @@ export class ChatService {
     await this.recover(await this.requireOwnedChat(ownerSub, chatId));
     const { items, nextCursor } = await this.deps.chats.listMessages(chatId, limit, cursor);
     return { items: items.map(toMessage), nextCursor };
-  }
-
-  async usage(ownerSub: string): Promise<Usage> {
-    const now = this.deps.clock.now();
-    const { timeZone, dailyRequests, hourlyRequests, dailySearches } = this.deps.config.quota;
-    const day = dayKey(now, timeZone);
-    const hour = hourKey(now, timeZone);
-    const counts = await this.deps.chats.getUsage(ownerSub, day, hour);
-    return {
-      timeZone,
-      daily: {
-        date: day,
-        requests: counts.daily.requests,
-        requestLimit: dailyRequests,
-        searches: counts.daily.searches,
-        searchLimit: dailySearches,
-        resetsAt: nextDayStart(now, timeZone).toISOString(),
-      },
-      hourly: {
-        hour,
-        requests: counts.hourly.requests,
-        requestLimit: hourlyRequests,
-        resetsAt: nextHourStart(now, timeZone).toISOString(),
-      },
-    };
   }
 }

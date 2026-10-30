@@ -18,7 +18,6 @@ import {
   type StartRunFailure,
   type StartRunParams,
   type TitleSource,
-  type UsageCounts,
 } from '../repositories/chat-repository';
 import type { AuthFlowItem, OtpRateItem, SessionItem } from '../repositories/session-repository';
 
@@ -29,7 +28,6 @@ export class FakeChatStore implements ChatStore {
   metas = new Map<string, ChatMetaItem>();
   messages = new Map<string, MessageItem>();
   runs = new Map<string, RunItem>();
-  usage = new Map<string, Record<string, number | string>>();
 
   async createChat(p: { chatId: string; ownerSub: string; title: string; titleSource: TitleSource; now: Date }) {
     if (this.metas.has(p.chatId)) throw Object.assign(new Error('exists'), { name: 'ConditionalCheckFailedException' });
@@ -128,31 +126,6 @@ export class FakeChatStore implements ChatStore {
     );
   }
 
-  private usageItem(sub: string, sk: string) {
-    const k = `${keys.user(sub)}/${sk}`;
-    let item = this.usage.get(k);
-    if (!item) {
-      item = {};
-      this.usage.set(k, item);
-    }
-    return item;
-  }
-
-  async getUsage(ownerSub: string, day: string, hour: string): Promise<UsageCounts> {
-    const d = this.usage.get(`${keys.user(ownerSub)}/${keys.usageDaily(day)}`) ?? {};
-    const h = this.usage.get(`${keys.user(ownerSub)}/${keys.usageHourly(hour)}`) ?? {};
-    const n = (v: unknown) => (typeof v === 'number' ? v : 0);
-    return {
-      daily: {
-        requests: n(d.requests),
-        searches: n(d.searches),
-        actualInputTokens: n(d.actualInputTokens),
-        actualOutputTokens: n(d.actualOutputTokens),
-      },
-      hourly: { requests: n(h.requests) },
-    };
-  }
-
   async startRun(p: StartRunParams) {
     const reasons: StartRunFailure[] = [];
     if (this.runs.has(`${p.chatId}/${p.requestId}`)) reasons.push('duplicate');
@@ -160,10 +133,6 @@ export class FakeChatStore implements ChatStore {
     if (!m || m.ownerSub !== p.ownerSub || m.deletedAt || (m.activeRunId && (m.lockExpiresAt ?? 0) >= p.now.getTime())) {
       reasons.push('busy_or_gone');
     }
-    const d = this.usageItem(p.ownerSub, keys.usageDaily(p.usage.dayKey));
-    const h = this.usageItem(p.ownerSub, keys.usageHourly(p.usage.hourKey));
-    if (typeof d.requests === 'number' && d.requests >= p.usage.dailyLimit) reasons.push('quota_daily');
-    if (typeof h.requests === 'number' && h.requests >= p.usage.hourlyLimit) reasons.push('quota_hourly');
     if (reasons.length > 0) throw new StartRunConflict(reasons);
     const iso = p.now.toISOString();
     const pk = keys.chat(p.chatId);
@@ -202,10 +171,6 @@ export class FakeChatStore implements ChatStore {
       GSI1SK: keys.gsi1Sk(iso, p.chatId),
       ...(p.autoTitle !== undefined ? { title: p.autoTitle, titleSource: 'auto' } : {}),
     });
-    d.requests = (typeof d.requests === 'number' ? d.requests : 0) + 1;
-    d.expiresAt = p.usage.expiresAt;
-    h.requests = (typeof h.requests === 'number' ? h.requests : 0) + 1;
-    h.expiresAt = p.usage.expiresAt;
   }
 
   finishCalls: FinishRunParams[] = [];
@@ -230,13 +195,6 @@ export class FakeChatStore implements ChatStore {
       delete m.lockExpiresAt;
       committed = true;
     }
-    const d = this.usageItem(p.ownerSub, keys.usageDaily(p.dayKey));
-    const add = (k: string, v: number) => {
-      d[k] = (typeof d[k] === 'number' ? (d[k] as number) : 0) + v;
-    };
-    add('actualInputTokens', p.usage.inputTokens);
-    add('actualOutputTokens', p.usage.outputTokens);
-    add('searches', p.usage.searchCalls);
     return committed;
   }
 
@@ -253,12 +211,6 @@ export class FakeChatStore implements ChatStore {
     delete m.activeRunId;
     delete m.lockExpiresAt;
     return clone(m);
-  }
-
-  async listUserPartition(ownerSub: string) {
-    return [...this.usage.keys()]
-      .filter((k) => k.startsWith(`${keys.user(ownerSub)}/`))
-      .map((k) => ({ PK: keys.user(ownerSub), SK: k.split('/')[1]! }));
   }
 }
 

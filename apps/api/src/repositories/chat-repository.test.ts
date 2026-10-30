@@ -18,11 +18,10 @@ const params: StartRunParams = {
   now: new Date('2026-10-29T03:00:00Z'),
   lockExpiresAt: Date.parse('2026-10-29T03:03:00Z'),
   modelId: 'm',
-  usage: { dayKey: '2026-10-29', hourKey: '2026-10-29T12', dailyLimit: 20, hourlyLimit: 10, expiresAt: 1 },
 };
 
 describe('ChatRepository.startRun', () => {
-  it('writes run, messages, lock and quota counters in a single conditional transaction', async () => {
+  it('writes run, messages and lock in a single conditional transaction', async () => {
     let input: { TransactItems: Array<Record<string, { ConditionExpression?: string; Key?: unknown; Item?: unknown }>> } | undefined;
     const { repo } = repoWith((cmd) => {
       input = cmd.input as typeof input;
@@ -30,21 +29,19 @@ describe('ChatRepository.startRun', () => {
     });
     await repo.startRun(params);
     const items = input!.TransactItems;
-    expect(items).toHaveLength(6);
+    expect(items).toHaveLength(4);
     expect(items[0]!.Put!.ConditionExpression).toBe('attribute_not_exists(PK)');
     expect(items[0]!.Put!.Item).toMatchObject({ PK: 'CHAT#CHAT1', SK: 'RUN#req1', status: 'running' });
     expect(items[2]!.Put!.Item).toMatchObject({ SK: 'MSG#A1', role: 'assistant', status: 'streaming', content: '' });
     expect(items[3]!.Update!.ConditionExpression).toContain('ownerSub = :sub');
     expect(items[3]!.Update!.ConditionExpression).toContain('lockExpiresAt < :nowMs');
-    expect(items[4]!.Update!.Key).toEqual({ PK: 'USER#sub1', SK: 'USAGE#D#2026-10-29' });
-    expect(items[5]!.Update!.Key).toEqual({ PK: 'USER#sub1', SK: 'USAGE#H#2026-10-29T12' });
-    expect(items[4]!.Update!.ConditionExpression).toBe('attribute_not_exists(requests) OR requests < :limit');
+    expect(JSON.stringify(items)).not.toContain('USAGE#');
   });
 
   it.each([
-    [['ConditionalCheckFailed', 'None', 'None', 'None', 'None', 'None'], ['duplicate']],
-    [['None', 'None', 'None', 'ConditionalCheckFailed', 'None', 'None'], ['busy_or_gone']],
-    [['None', 'None', 'None', 'None', 'ConditionalCheckFailed', 'ConditionalCheckFailed'], ['quota_daily', 'quota_hourly']],
+    [['ConditionalCheckFailed', 'None', 'None', 'None'], ['duplicate']],
+    [['None', 'None', 'None', 'ConditionalCheckFailed'], ['busy_or_gone']],
+    [['ConditionalCheckFailed', 'None', 'None', 'ConditionalCheckFailed'], ['duplicate', 'busy_or_gone']],
     [[], ['unknown']],
   ])('maps cancellation reasons %j to %j', async (codes, reasons) => {
     const { repo } = repoWith(() => {
@@ -67,7 +64,7 @@ describe('ChatRepository.startRun', () => {
 });
 
 describe('ChatRepository.finishRun', () => {
-  it('releases the lock only for the matching run and still records usage when superseded', async () => {
+  it('releases the lock only for the matching run and reports when superseded', async () => {
     const calls: Array<{ name: string; input: Record<string, unknown> }> = [];
     const { repo } = repoWith((cmd) => {
       calls.push({ name: cmd.constructor.name, input: cmd.input });
@@ -88,16 +85,13 @@ describe('ChatRepository.finishRun', () => {
       searched: true,
       searchFailed: false,
       now: new Date('2026-10-29T03:01:00Z'),
-      dayKey: '2026-10-29',
-      usageExpiresAt: 1,
     });
     expect(committed).toBe(false);
     const tx = calls[0]!.input as { TransactItems: Array<{ Update: { ConditionExpression?: string; UpdateExpression: string } }> };
     expect(tx.TransactItems[0]!.Update.ConditionExpression).toBe('#status = :streaming');
     expect(tx.TransactItems[2]!.Update.ConditionExpression).toBe('activeRunId = :rid');
     expect(tx.TransactItems[2]!.Update.UpdateExpression).toBe('REMOVE activeRunId, lockExpiresAt');
-    expect(calls[1]!.name).toBe('UpdateCommand');
-    expect(calls[1]!.input).toMatchObject({ Key: { PK: 'USER#sub1', SK: 'USAGE#D#2026-10-29' } });
+    expect(calls).toHaveLength(1);
   });
 });
 

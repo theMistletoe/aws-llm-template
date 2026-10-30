@@ -1,12 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { api } from '../api/endpoints';
-import { formatResumeTime } from '../components/format';
-import { queryKeys, useMe, useUsage } from '../hooks/queries';
+import { queryKeys, useMe } from '../hooks/queries';
 
 export function SettingsPage() {
   const me = useMe();
-  const usage = useUsage();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const logout = useMutation({
@@ -17,7 +15,6 @@ export function SettingsPage() {
       navigate('/login', { replace: true });
     },
   });
-  const u = usage.data;
   return (
     <div className="overflow-y-auto p-4 md:p-8">
       <div className="mx-auto max-w-2xl space-y-6">
@@ -37,32 +34,6 @@ export function SettingsPage() {
           >
             ログアウト
           </button>
-        </section>
-        <section aria-labelledby="usage" className="rounded-xl bg-white p-4 shadow-sm dark:bg-gray-900">
-          <h2 id="usage" className="mb-2 font-semibold">
-            使用量
-          </h2>
-          {usage.isPending ? <p>読み込み中…</p> : null}
-          {usage.isError ? <p role="alert">使用量を取得できませんでした。</p> : null}
-          {u ? (
-            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
-              <dt>本日の生成回数</dt>
-              <dd>
-                {u.daily.requests} / {u.daily.requestLimit}
-              </dd>
-              <dt>この1時間の生成回数</dt>
-              <dd>
-                {u.hourly.requests} / {u.hourly.requestLimit}
-              </dd>
-              <dt>本日のWeb検索回数</dt>
-              <dd>
-                {u.daily.searches} / {u.daily.searchLimit}
-              </dd>
-              <dt>日次リセット</dt>
-              <dd>{formatResumeTime(u.daily.resetsAt)}</dd>
-            </dl>
-          ) : null}
-          <p className="mt-2 text-xs text-gray-500">中断・失敗した生成も1回として数えます。</p>
         </section>
       </div>
     </div>

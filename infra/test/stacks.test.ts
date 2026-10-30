@@ -49,14 +49,14 @@ describe('default deployment (all optional features OFF)', () => {
     ]);
   });
 
-  it('DataStack: PITR on data only, TTL on expiresAt, GSI1, retained', () => {
+  it('DataStack: PITR on data only, TTL on the session table only, GSI1, retained', () => {
     const t = stack('Data');
     t.hasResource('AWS::DynamoDB::Table', {
       DeletionPolicy: 'Retain',
       Properties: Match.objectLike({
         TableName: 'chat-app-dev-data',
         PointInTimeRecoverySpecification: { PointInTimeRecoveryEnabled: true },
-        TimeToLiveSpecification: { AttributeName: 'expiresAt', Enabled: true },
+        TimeToLiveSpecification: Match.absent(),
         GlobalSecondaryIndexes: [Match.objectLike({ IndexName: 'GSI1' })],
         BillingMode: 'PAY_PER_REQUEST',
       }),

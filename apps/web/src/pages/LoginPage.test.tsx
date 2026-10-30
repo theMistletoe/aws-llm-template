@@ -86,7 +86,6 @@ describe('LoginPage', () => {
         mockAuthenticated(ME);
         return new HttpResponse(null, { status: 204 });
       }),
-      http.get('*/api/v1/usage', () => HttpResponse.json({}, { status: 500 })),
     );
     mockChats();
     await user.type(screen.getByLabelText('確認コード'), '00a0000');

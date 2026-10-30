@@ -1,5 +1,5 @@
 import type { AgentEvent, AgentInvokeRequest } from '@ai-chat/agent-contracts';
-import type { Chat, MessageList, Usage } from '@ai-chat/contracts';
+import type { Chat, MessageList } from '@ai-chat/contracts';
 import { describe, expect, it } from 'vitest';
 import { StartRunConflict, keys } from '../repositories/chat-repository';
 import { client, createHarness, type TestHarness } from '../testing/fakes';
@@ -147,8 +147,8 @@ describe('POST /api/v1/chats/:id/stream', () => {
     expect((await c.del(`/api/v1/chats/${chat.id}`)).status).toBe(204);
   });
 
-  it('handles client disconnects: interrupted, quota consumed, AgentCore session stopped', async () => {
-    const { h, c, chat, send } = await setup();
+  it('handles client disconnects: interrupted and AgentCore session stopped', async () => {
+    const { h, chat, send } = await setup();
     h.agent.script = waitForAbortScript();
     const res = await send('止める');
     const reader = res.body!.getReader();
@@ -157,9 +157,6 @@ describe('POST /api/v1/chats/:id/stream', () => {
     await until(() => h.chats.finishCalls.length === 1);
     expect(h.chats.finishCalls[0]).toMatchObject({ status: 'interrupted', content: '途中まで' });
     expect(h.agent.stopped).toEqual([{ chatId: chat.id, userSub: 'sub-owner@example.com' }]);
-    const usage = (await (await c.get('/api/v1/usage')).json()) as Usage;
-    expect(usage.daily.requests).toBe(1);
-    expect(usage.hourly.requests).toBe(1);
   });
 
   it('times out long generations with MODEL_TIMEOUT', async () => {
@@ -209,47 +206,13 @@ describe('POST /api/v1/chats/:id/stream', () => {
     expect(assistantOf(h)[0]!.status).toBe('completed');
   });
 
-  it('enforces the daily quota with a JST reset time (and counts failures)', async () => {
-    const { h, c, send } = await setup({ QUOTA_DAILY_REQUESTS: '2' });
-    h.agent.script = async function* () {
-      yield { type: 'error', code: 'MODEL_ERROR', retryable: true };
-    };
-    await (await send('1')).text();
-    await (await send('2')).text();
-    const res = await send('3');
-    expect(res.status).toBe(429);
-    const body = (await res.json()) as { error: { code: string; retryAfter: string } };
-    expect(body.error).toMatchObject({ code: 'QUOTA_EXCEEDED', retryAfter: '2026-10-29T15:00:00.000Z' });
-    // JSTの日付が変わると再開できる
-    h.clock.set('2026-10-29T15:00:01.000Z');
-    await c.login('owner@example.com'); // セッションは非操作30分で失効するため再ログイン
-    expect((await send('4')).status).toBe(200);
-  });
-
-  it('enforces the hourly quota', async () => {
-    const { h, c, send } = await setup({ QUOTA_HOURLY_REQUESTS: '1' });
-    await (await send('1')).text();
-    const res = await send('2');
-    expect(res.status).toBe(429);
-    expect(((await res.json()) as { error: { retryAfter: string } }).error.retryAfter).toBe('2026-10-29T04:00:00.000Z');
-    h.clock.advance(3600_000);
-    await c.login('owner@example.com');
-    expect((await send('3')).status).toBe(200);
-  });
-
-  it('disables web search once the daily search quota is used up', async () => {
-    const { h, c, send } = await setup({ QUOTA_DAILY_SEARCHES: '2' });
-    h.agent.script = async function* () {
-      yield { type: 'delta', text: 'x' };
-      yield { type: 'usage', inputTokens: 1, outputTokens: 1, searchCalls: 3 };
-      yield { type: 'done', reason: 'complete' };
-    };
-    await (await send('最新1')).text();
-    expect(h.agent.requests[0]!.options.allowWebSearch).toBe(true);
-    await (await send('最新2')).text();
-    expect(h.agent.requests[1]!.options.allowWebSearch).toBe(false);
-    const usage = (await (await c.get('/api/v1/usage')).json()) as Usage;
-    expect(usage.daily.searches).toBe(6);
+  it('has no per-user generation quota and follows WEB_SEARCH_ENABLED for search', async () => {
+    const { h, send } = await setup();
+    for (let i = 0; i < 25; i++) expect((await send(`q${i}`)).status).toBe(200);
+    expect(h.agent.requests.every((r) => r.options.allowWebSearch)).toBe(true);
+    const off = await setup({ WEB_SEARCH_ENABLED: 'false' });
+    await (await off.send('最新')).text();
+    expect(off.h.agent.requests[0]!.options.allowWebSearch).toBe(false);
   });
 
   it('passes recent completed history as context and never the raw session/user data', async () => {
@@ -355,15 +318,6 @@ describe('conflict diagnosis when the store gives no cancellation reasons', () =
     const id = uuidv7();
     await (await send('a', id)).text();
     expect(await codeOf(await send('a', id))).toMatchObject({ status: 409, code: 'DUPLICATE_REQUEST' });
-  });
-
-  it('detects daily and hourly quota', async () => {
-    const daily = await setupUnknown({ QUOTA_DAILY_REQUESTS: '1' });
-    await (await daily.send('a')).text();
-    expect(await codeOf(await daily.send('b'))).toMatchObject({ status: 429, code: 'QUOTA_EXCEEDED', retryAfter: '2026-10-29T15:00:00.000Z' });
-    const hourly = await setupUnknown({ QUOTA_HOURLY_REQUESTS: '1' });
-    await (await hourly.send('a')).text();
-    expect(await codeOf(await hourly.send('b'))).toMatchObject({ status: 429, retryAfter: '2026-10-29T04:00:00.000Z' });
   });
 
   it('detects a lock taken concurrently and a chat deleted concurrently', async () => {

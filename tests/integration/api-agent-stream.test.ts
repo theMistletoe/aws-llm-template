@@ -1,11 +1,11 @@
 import { GetCommand } from '@aws-sdk/lib-dynamodb';
-import type { MessageList, Usage } from '@ai-chat/contracts';
+import type { MessageList } from '@ai-chat/contracts';
 import { FIXED_REPLY_PREFIX } from '@ai-chat/test-fixtures';
 import { uuidv7 } from 'uuidv7';
 import { describe, expect, it } from 'vitest';
 import { startLocalApi } from '../../apps/api/src/local';
 import { LOCAL_AWS_ENV } from '../../local/lib';
-import { API_ENV, LIMITED_API, TABLES } from './env';
+import { API_ENV, TABLES } from './env';
 import { Client, db, readSse, until } from './helpers';
 
 /** keep-alive接続も含めて閉じる（再起動後に古いソケットを再利用させない） */
@@ -70,9 +70,6 @@ describe('SSE generation through the local Strands agent', () => {
       return m && m.status !== 'streaming' ? m : undefined;
     });
     expect(last.status).toBe('interrupted');
-    // 中断も消費扱い
-    const usage = (await (await c.get('/api/v1/usage')).json()) as Usage;
-    expect(usage.daily.requests).toBe(1);
   });
 
   it('sends heartbeats while the model is silent', async () => {
@@ -92,19 +89,6 @@ describe('SSE generation through the local Strands agent', () => {
     expect(events.at(-1)).toMatchObject({ event: 'error', data: { code: 'AGENT_ERROR' } });
     const list = (await (await c.get(`/api/v1/chats/${chat.id}/messages`)).json()) as MessageList;
     expect(list.items.at(-1)!.status).toBe('failed');
-  });
-
-  it('enforces quotas (429 with JST reset time)', async () => {
-    const c = new Client(LIMITED_API);
-    await c.login();
-    const chat = await c.createChat();
-    await readSse(await c.stream(chat.id, '1'));
-    await readSse(await c.stream(chat.id, '2'));
-    const res = await c.stream(chat.id, '3');
-    expect(res.status).toBe(429);
-    const body = (await res.json()) as { error: { code: string; retryAfter: string } };
-    expect(body.error.code).toBe('QUOTA_EXCEEDED');
-    expect(new Date(body.error.retryAfter).getUTCMinutes()).toBe(0);
   });
 
   it('keeps history across an API restart', async () => {

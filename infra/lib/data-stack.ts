@@ -2,7 +2,7 @@ import { RemovalPolicy, Stack, type StackProps } from 'aws-cdk-lib';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import type { Construct } from 'constructs';
 
-/** DynamoDB（§7.1）。data: 会話・メッセージ・利用量（PITRオン）/ session: セッション・認証フロー・送信レート（PITRオフ） */
+/** DynamoDB（§7.1）。data: 会話・メッセージ（PITRオン）/ session: セッション・認証フロー・送信レート（PITRオフ、TTLあり） */
 export class DataStack extends Stack {
   readonly dataTable: dynamodb.Table;
   readonly sessionTable: dynamodb.Table;
@@ -15,7 +15,6 @@ export class DataStack extends Stack {
       sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
-      timeToLiveAttribute: 'expiresAt',
       deletionProtection: true,
       removalPolicy: RemovalPolicy.RETAIN,
     });

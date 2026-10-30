@@ -63,6 +63,6 @@ pnpm delete-user -- --email user@example.com --stage dev --yes    # Cognitoユ�
 | オプション | 追加されるもの | 注意 |
 |---|---|---|
 | `enableWaf` | `ChatApp-<stage>-Waf`（us-east-1）| まず Count で誤検知を確認し、`WafStack` の `blockMode` で Block へ |
-| `enableBudgets` | 月次予算と通知（`budgetEmail`） | 支出は止まらない。BFFの利用上限は必須 |
+| `enableBudgets` | 月次予算と通知（`budgetEmail`） | 支出は止まらない。ユーザー単位の回数上限もないため、公開時は WAF や全体の上限と併用する |
 | `enableCiCd` | GitHub OIDC ロール | `.github/workflows` は `vars.ENABLE_CICD == 'true'` で有効化 |
 | `useCustomDomain` | 代替ドメイン名・証明書 | `docs/custom-domain-migration.md` |

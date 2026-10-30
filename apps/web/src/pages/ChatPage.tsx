@@ -6,16 +6,11 @@ import { ApiRequestError } from '../api/client';
 import { api } from '../api/endpoints';
 import { Composer } from '../components/Composer';
 import { MessageItem, type MessageView } from '../components/MessageItem';
-import { formatResumeTime } from '../components/format';
 import { useChatStream, type StreamError, type StreamState } from '../hooks/chat-stream';
 import { queryKeys, useChat, useMessages } from '../hooks/queries';
 
 export function streamErrorMessage(error: StreamError): string {
   switch (error.code) {
-    case 'QUOTA_EXCEEDED':
-      return error.retryAfter
-        ? `利用上限に達しました。${formatResumeTime(error.retryAfter)}以降に再開できます。`
-        : '利用上限に達しました。';
     case 'CHAT_BUSY':
       return 'このチャットは応答を生成中です。完了するか停止してから送信してください。';
     case 'DUPLICATE_REQUEST':
@@ -166,7 +161,7 @@ export function ChatPage() {
             <div role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
               <p>{streamErrorMessage(bannerError)}</p>
               <div className="mt-2 flex gap-2">
-                {bannerError.retryable && bannerError.code !== 'QUOTA_EXCEEDED' ? (
+                {bannerError.retryable ? (
                   <button type="button" onClick={() => void stream.retry()} className="rounded border border-amber-700 px-2 py-0.5">
                     再送
                   </button>

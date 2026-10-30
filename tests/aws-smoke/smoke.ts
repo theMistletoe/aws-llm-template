@@ -222,8 +222,7 @@ async function main() {
   await check('AWS-07', '他人のチャットは404', async () => {
     const res = await user2.request('GET', `/api/v1/chats/${chatId}/messages`);
     assert(res.status === 404, `status ${res.status}`);
-    const usage = (await (await user1.request('GET', '/api/v1/usage')).json()) as { daily: { requests: number } };
-    return `404 / user1 usage today=${usage.daily.requests}`;
+    return '404';
   });
 
   await check('AWS-08', '会話内でAgentCoreセッションを再利用し、削除で停止', async () => {

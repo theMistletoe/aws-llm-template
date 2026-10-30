@@ -1,6 +1,5 @@
 import type { MessageList } from '@ai-chat/contracts';
 import { describe, expect, it } from 'vitest';
-import { LIMITED_API } from './env';
 import { Client, readSse } from './helpers';
 
 describe('web search citations (fixture search)', () => {
@@ -44,16 +43,5 @@ describe('web search citations (fixture search)', () => {
     const list = (await (await c.get(`/api/v1/chats/${chat.id}/messages`)).json()) as MessageList;
     expect(list.items.at(-1)).toMatchObject({ searchFailed: true, status: 'completed' });
     expect(list.items.at(-1)!.content).toContain('未確認');
-  });
-
-  it('stops offering web search after the daily search quota', async () => {
-    const c = new Client(LIMITED_API);
-    await c.login();
-    const chat = await c.createChat();
-    const first = await readSse(await c.stream(chat.id, '最新のAWSニュース'));
-    expect(first.events.some((e) => e.event === 'tool_status')).toBe(true);
-    const second = await readSse(await c.stream(chat.id, '最新のAWSニュース 2'));
-    expect(second.events.some((e) => e.event === 'tool_status')).toBe(false);
-    expect(second.events.at(-1)!.event).toBe('done');
   });
 });

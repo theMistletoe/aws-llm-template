@@ -78,7 +78,6 @@ async function createTables(client: DynamoDBClient, profile: Profile) {
       }),
     );
     await waitUntilTableExists({ client, maxWaitTime: 30 }, { TableName: names.data });
-    await enableTtl(client, names.data);
   }
   if (!existing.has(names.session)) {
     await client.send(

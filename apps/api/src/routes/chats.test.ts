@@ -107,14 +107,4 @@ describe('chat CRUD', () => {
     expect(p2.items.map((m) => m.content)).toEqual(['q0', 'こんにちは、世界']);
     expect(p2.nextCursor).toBeNull();
   });
-
-  it('reports usage with JST reset times', async () => {
-    const { c } = await loggedIn();
-    const usage = await (await c.get('/api/v1/usage')).json();
-    expect(usage).toEqual({
-      timeZone: 'Asia/Tokyo',
-      daily: { date: '2026-10-29', requests: 0, requestLimit: 20, searches: 0, searchLimit: 20, resetsAt: '2026-10-29T15:00:00.000Z' },
-      hourly: { hour: '2026-10-29T12', requests: 0, requestLimit: 10, resetsAt: '2026-10-29T04:00:00.000Z' },
-    });
-  });
 });

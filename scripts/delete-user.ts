@@ -14,7 +14,7 @@ import { LOCAL_AWS_ENV, ROOT, tableNames } from '../local/lib';
  * 管理者用: ユーザーデータ削除（§13）。既定はドライラン。`--yes` で実行する。
  *   pnpm delete-user -- --email user@example.com [--stage dev] [--yes]
  *   pnpm delete-user -- --email user@example.com --local --yes     # ローカル（MiniStack + dev-auth）
- * 削除対象: Cognitoユーザー、当該ユーザーの会話（META・メッセージ・RUN）、Usage行。
+ * 削除対象: Cognitoユーザー、当該ユーザーの会話（META・メッセージ・RUN）。
  * セッション行はユーザー単位の索引を持たないため削除しない（最大8時間で失効。即時停止はREADMEの手順）。
  * PITR には最大35日間データが残る。
  */
@@ -78,7 +78,7 @@ async function main() {
   } while (startKey);
 
   const keys: Array<{ PK: string; SK: string }> = [];
-  for (const pk of [...chatIds.map((id) => `CHAT#${id}`), `USER#${sub}`]) {
+  for (const pk of chatIds.map((id) => `CHAT#${id}`)) {
     let sk: Record<string, unknown> | undefined;
     do {
       const page = await db.send(

@@ -82,7 +82,6 @@ export function ChatStreamProvider({ children }: { children: ReactNode }) {
       void queryClient.invalidateQueries({ queryKey: queryKeys.messages(chatId) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.chats });
       void queryClient.invalidateQueries({ queryKey: queryKeys.chat(chatId) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.usage });
     },
     [queryClient],
   );

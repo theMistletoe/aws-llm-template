@@ -6,7 +6,7 @@ ChatGPT風のテキストチャットWebアプリを、自分のAWSアカウン�
 - **BFF**: Hono（Lambda Web Functions。代替: Function URL + Response Streaming）
 - **認証**: メールアドレスとワンタイムコードだけのパスワードレス認証（Cognito メールOTP + 自前1画面）。ブラウザにトークンを渡さず `__Host-session` Cookie で管理
 - **AI**: Strands Agents TypeScript SDK を Amazon Bedrock AgentCore Runtime にデプロイ。AgentCore Gateway の Web Search を既定で有効（出典を表示）
-- **データ**: DynamoDB（会話・セッション・クォータの正本）
+- **データ**: DynamoDB（会話・セッションの正本）
 - **IaC**: AWS CDK v2（TypeScript）。WAF / Budgets / CI/CD / 独自ドメインは任意（既定OFF）
 - **ローカル**: MiniStack + ローカルAgent（固定モデル・検索fixture）+ dev-auth。**AWS認証情報・APIキー・インターネット不要**で `pnpm dev` / `pnpm test` が完結
 
@@ -102,7 +102,7 @@ docs/           ADR、脅威モデル、運用、独自ドメイン移行、プ�
 設定の集約先:
 
 - `infra/config/options.ts` … `enableWaf` / `enableBudgets` / `enableCiCd` / `useCustomDomain` / `webSearchEnabled` / `bffPlatform`（既定は任意機能OFF、`web-functions`）
-- `infra/config/app-config.ts` … モデルID、クォータ（20回/日・10回/時・検索20回/日、JST境界）、タイムアウト（生成120秒 < BFF150秒 < ロック180秒）、AgentCoreアイドル300秒、ログ保持30日
+- `infra/config/app-config.ts` … モデルID、生成の上限（出力2,048トークン・検索3回/回答・直近10往復）、タイムアウト（生成120秒 < BFF150秒 < ロック180秒）、AgentCoreアイドル300秒、ログ保持30日
 
 ### 既定モデル
 
@@ -131,7 +131,7 @@ PoC 関門（§15 Phase 0）と AWS dev 受入試験（§12.6）の結果は [AD
 
 ## 一般公開して運用する場合の注意（キット利用者の責任範囲）
 
-- **コスト上限（キルスイッチ）は実装していません。** ユーザー単位のクォータはありますが、アカウントの大量作成でクォータを回避され得ます。全体の上限、`enableBudgets`、`enableWaf` を検討してください。AWS Budgets は支出を即時停止しません。
+- **利用回数の上限（ユーザー単位のクォータ）とコスト上限（キルスイッチ）は実装していません**（[ADR 0006](docs/adr/0006-remove-usage-quota.md)）。一般公開する場合は、全体の上限、`enableBudgets`、`enableWaf` を必ず検討してください。AWS Budgets は支出を即時停止しません。
 - **Web Search は別途従量課金**です（目安 $7 / 1,000 検索。[§14](PRD/ai_chat_starter_kit_technical_spec_v2_1.md)）。AgentCore Runtime / Gateway、Bedrock、Cognito（MAU）、SES（ログインごとに1通）も従量課金です。
 - **アカウントの強度はメールアカウントの安全性に依存**します。
 - 検索結果の出典表示が利用条件です。キットは出典（タイトル・URL・公開日）の表示まで実装しています。
@@ -149,7 +149,7 @@ PoC 関門（§15 Phase 0）と AWS dev 受入試験（§12.6）の結果は [AD
 | レベル | 対象 | ツール |
 |---|---|---|
 | Frontend Unit | 画面・SSEパーサー・XSS・出典・ログイン画面 | Vitest + RTL + user-event + MSW（ネットワーク禁止） |
-| Backend Unit | 認証フロー・セッション・Origin・所有者・冪等性・ロック・遅延回復・クォータ（JST）・SSE・Agent | Vitest（インメモリリポジトリ・fake clock） |
+| Backend Unit | 認証フロー・セッション・Origin・所有者・冪等性・ロック・遅延回復・SSE・Agent | Vitest（インメモリリポジトリ・fake clock） |
 | API 結合 | 実HTTP・DynamoDB副作用・SSE・切断・再起動後の復元 | Vitest + MiniStack |
 | System E2E | ログイン→送信→逐次表示→出典→リロード復元→削除→ログアウト、XSS、429、切断 | TesterArmy `e2e` + Chromium |
 | AWS dev 受入 | Cognito OTP、CloudFront/OAC、SSE、AgentCore、Web Search、分離 | `pnpm smoke` / `pnpm test:aws-smoke` |

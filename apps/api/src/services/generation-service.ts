@@ -10,7 +10,6 @@ import {
 import type { AppDeps, SessionUser } from '../deps';
 import { errors } from '../lib/errors';
 import type { Logger } from '../lib/logger';
-import { dayKey, epochSeconds, hourKey, nextDayStart, nextHourStart } from '../lib/time';
 import { StartRunConflict, type MessageItem } from '../repositories/chat-repository';
 import type { ChatService } from './chat-service';
 
@@ -73,18 +72,9 @@ export class GenerationService {
     const now = clock.now();
     if (meta.activeRunId && (meta.lockExpiresAt ?? 0) >= now.getTime()) throw errors.chatBusy();
 
-    const tz = config.quota.timeZone;
-    const day = dayKey(now, tz);
-    const hour = hourKey(now, tz);
-    const [usage, history] = await Promise.all([
-      chats.getUsage(user.sub, day, hour),
-      chats.recentCompletedMessages(chatId, config.generation.contextTurns * 2),
-    ]);
-    // 検索の日次上限に達したら検索なしで生成する（最後の1回答で最大3回まで超過し得る。§8）
-    const allowWebSearch = config.webSearchEnabled && usage.daily.searches < config.quota.dailySearches;
+    const history = await chats.recentCompletedMessages(chatId, config.generation.contextTurns * 2);
     const userMessageId = this.deps.newId();
     const assistantMessageId = this.deps.newId();
-    const usageExpiresAt = epochSeconds(now) + config.quota.retentionDays * 86_400;
 
     try {
       await chats.startRun({
@@ -98,13 +88,6 @@ export class GenerationService {
         now,
         lockExpiresAt: now.getTime() + config.generation.lockTtlSeconds * 1000,
         modelId: config.modelId,
-        usage: {
-          dayKey: day,
-          hourKey: hour,
-          dailyLimit: config.quota.dailyRequests,
-          hourlyLimit: config.quota.hourlyRequests,
-          expiresAt: usageExpiresAt,
-        },
       });
     } catch (e) {
       if (e instanceof StartRunConflict) throw await this.explainConflict(e, user.sub, chatId, input.requestId, now);
@@ -119,7 +102,7 @@ export class GenerationService {
       message: input.content,
       context: buildContext(history, config.generation.contextTurns * 2),
       options: {
-        allowWebSearch,
+        allowWebSearch: config.webSearchEnabled,
         maxToolCalls: config.generation.maxToolCalls,
         maxOutputTokens: config.generation.maxOutputTokens,
       },
@@ -131,14 +114,11 @@ export class GenerationService {
       requestSignal: params.requestSignal,
       httpRequestId: params.requestId,
       logger: params.logger.child({ chatId }),
-      dayKey: day,
-      usageExpiresAt,
     });
   }
 
   /** トランザクション失敗の理由を判定する（CancellationReasonsが無い実装でも読み直して判定） */
   private async explainConflict(conflict: StartRunConflict, ownerSub: string, chatId: string, requestId: string, now: Date) {
-    const tz = this.deps.config.quota.timeZone;
     let reasons = conflict.reasons;
     if (reasons.includes('unknown')) {
       reasons = [];
@@ -146,9 +126,6 @@ export class GenerationService {
       const meta = await this.deps.chats.getMeta(chatId);
       if (!meta || meta.deletedAt || meta.ownerSub !== ownerSub || (meta.activeRunId && (meta.lockExpiresAt ?? 0) >= now.getTime()))
         reasons.push('busy_or_gone');
-      const usage = await this.deps.chats.getUsage(ownerSub, dayKey(now, tz), hourKey(now, tz));
-      if (usage.daily.requests >= this.deps.config.quota.dailyRequests) reasons.push('quota_daily');
-      if (usage.hourly.requests >= this.deps.config.quota.hourlyRequests) reasons.push('quota_hourly');
     }
     if (reasons.includes('duplicate')) return errors.duplicateRequest();
     if (reasons.includes('busy_or_gone')) {
@@ -156,8 +133,6 @@ export class GenerationService {
       if (!meta || meta.deletedAt || meta.ownerSub !== ownerSub) return errors.notFound();
       return errors.chatBusy();
     }
-    if (reasons.includes('quota_daily')) return errors.quotaExceeded(nextDayStart(now, tz).toISOString());
-    if (reasons.includes('quota_hourly')) return errors.quotaExceeded(nextHourStart(now, tz).toISOString());
     return errors.chatBusy();
   }
 
@@ -168,8 +143,6 @@ export class GenerationService {
     requestSignal: AbortSignal;
     httpRequestId: string;
     logger: Logger;
-    dayKey: string;
-    usageExpiresAt: number;
   }): Response {
     const { config } = this.deps;
     const encoder = new TextEncoder();
@@ -346,8 +319,6 @@ export class GenerationService {
         searchFailed: acc.searchFailed,
         ...(sseError ? { errorCode: sseError.code } : {}),
         now: clock.now(),
-        dayKey: p.dayKey,
-        usageExpiresAt: p.usageExpiresAt,
       });
     } catch (e) {
       // 保存に失敗してもロックは期限切れ後の遅延回復で整合する

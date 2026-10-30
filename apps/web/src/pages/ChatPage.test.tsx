@@ -110,21 +110,21 @@ describe('ChatPage', () => {
     expect(await screen.findByRole('button', { name: '送信' })).toBeVisible();
   });
 
-  it('shows the quota message with the JST resume time and keeps the draft', async () => {
+  it('shows a retryable error banner when the chat is busy and keeps the draft', async () => {
     mockAuthenticated();
     mockChats([chat(CHAT_ID)]);
     mockChat(chat(CHAT_ID));
     mockMessages(CHAT_ID, [message({ id: 'M0', role: 'user', content: '前の質問' })]);
     server.use(
       http.post(`*/api/v1/chats/${CHAT_ID}/stream`, () =>
-        HttpResponse.json(apiError('QUOTA_EXCEEDED', { retryAfter: '2026-10-29T15:00:00.000Z', retryable: true }), { status: 429 }),
+        HttpResponse.json(apiError('CHAT_BUSY', { retryable: true }), { status: 409 }),
       ),
     );
     const { user } = renderApp(`/chat/${CHAT_ID}`);
     await user.type(await screen.findByLabelText('メッセージ'), 'もう一回');
     await user.click(screen.getByRole('button', { name: '送信' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('利用上限に達しました。10月30日 0:00（日本時間）以降に再開できます。');
-    expect(screen.queryByRole('button', { name: '再送' })).toBeNull();
+    expect(await screen.findByRole('alert')).toHaveTextContent('このチャットは応答を生成中です。完了するか停止してから送信してください。');
+    expect(screen.getByRole('button', { name: '再送' })).toBeVisible();
     expect(screen.getByLabelText('メッセージ')).toHaveValue('もう一回');
     await user.click(screen.getByRole('button', { name: '閉じる' }));
     expect(screen.queryByRole('alert')).toBeNull();

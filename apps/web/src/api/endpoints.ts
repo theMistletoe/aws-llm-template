@@ -1,4 +1,4 @@
-import type { Chat, ChatList, Me, MessageList, OtpStartResponse, Usage } from '@ai-chat/contracts';
+import type { Chat, ChatList, Me, MessageList, OtpStartResponse } from '@ai-chat/contracts';
 import { ApiRequestError, apiFetch } from './client';
 
 export const api = {
@@ -29,5 +29,4 @@ export const api = {
     apiFetch<MessageList>(
       `/api/v1/chats/${encodeURIComponent(chatId)}/messages?limit=50${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`,
     ),
-  usage: () => apiFetch<Usage>('/api/v1/usage'),
 };

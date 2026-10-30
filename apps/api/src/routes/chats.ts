@@ -54,7 +54,5 @@ export function chatRoutes(deps: AppDeps) {
     });
   });
 
-  r.get('/usage', async (c) => c.json(await chats.usage(c.get('user').sub)));
-
   return r;
 }

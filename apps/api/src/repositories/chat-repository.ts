@@ -17,8 +17,6 @@ export const keys = {
   meta: 'META',
   message: (messageId: string) => `MSG#${messageId}`,
   run: (requestId: string) => `RUN#${requestId}`,
-  usageDaily: (day: string) => `USAGE#D#${day}`,
-  usageHourly: (hour: string) => `USAGE#H#${hour}`,
   gsi1Sk: (updatedAt: string, chatId: string) => `${updatedAt}#${chatId}`,
 };
 
@@ -75,11 +73,6 @@ export type RunItem = {
   errorCode?: string;
 };
 
-export type UsageCounts = {
-  daily: { requests: number; searches: number; actualInputTokens: number; actualOutputTokens: number };
-  hourly: { requests: number };
-};
-
 export type StartRunParams = {
   chatId: string;
   ownerSub: string;
@@ -92,14 +85,6 @@ export type StartRunParams = {
   now: Date;
   lockExpiresAt: number;
   modelId: string;
-  usage: {
-    dayKey: string;
-    hourKey: string;
-    dailyLimit: number;
-    hourlyLimit: number;
-    /** epoch seconds（TTL） */
-    expiresAt: number;
-  };
 };
 
 export type FinishRunParams = {
@@ -115,11 +100,9 @@ export type FinishRunParams = {
   searchFailed: boolean;
   errorCode?: string;
   now: Date;
-  dayKey: string;
-  usageExpiresAt: number;
 };
 
-export type StartRunFailure = 'duplicate' | 'busy_or_gone' | 'quota_daily' | 'quota_hourly' | 'unknown';
+export type StartRunFailure = 'duplicate' | 'busy_or_gone' | 'unknown';
 
 export class StartRunConflict extends Error {
   constructor(readonly reasons: StartRunFailure[]) {
@@ -353,32 +336,13 @@ export class ChatRepository {
       .reverse();
   }
 
-  async getUsage(ownerSub: string, day: string, hour: string): Promise<UsageCounts> {
-    const [d, h] = await Promise.all([
-      this.db.send(new GetCommand({ TableName: this.table, Key: { PK: keys.user(ownerSub), SK: keys.usageDaily(day) } })),
-      this.db.send(new GetCommand({ TableName: this.table, Key: { PK: keys.user(ownerSub), SK: keys.usageHourly(hour) } })),
-    ]);
-    const di = (d.Item ?? {}) as Record<string, number | undefined>;
-    const hi = (h.Item ?? {}) as Record<string, number | undefined>;
-    return {
-      daily: {
-        requests: di.requests ?? 0,
-        searches: di.searches ?? 0,
-        actualInputTokens: di.actualInputTokens ?? 0,
-        actualOutputTokens: di.actualOutputTokens ?? 0,
-      },
-      hourly: { requests: hi.requests ?? 0 },
-    };
-  }
-
   /**
-   * 生成開始（§7.3）。RUNの条件付き作成（冪等性）、user/assistantメッセージ作成、ロック取得、
-   * クォータ加算（消費確定）を1トランザクションで行う。
+   * 生成開始（§7.3）。RUNの条件付き作成（冪等性）、user/assistantメッセージ作成、ロック取得を
+   * 1トランザクションで行う。
    */
   async startRun(p: StartRunParams): Promise<void> {
     const iso = p.now.toISOString();
     const pk = keys.chat(p.chatId);
-    const userPk = keys.user(p.ownerSub);
     const run: RunItem = {
       PK: pk,
       SK: keys.run(p.requestId),
@@ -445,29 +409,6 @@ export class ChatRepository {
                 ExpressionAttributeValues: metaValues,
               },
             },
-            {
-              Update: {
-                TableName: this.table,
-                Key: { PK: userPk, SK: keys.usageDaily(p.usage.dayKey) },
-                UpdateExpression: 'ADD requests :one SET updatedAt = :now, expiresAt = :exp',
-                ConditionExpression: 'attribute_not_exists(requests) OR requests < :limit',
-                ExpressionAttributeValues: {
-                  ':one': 1,
-                  ':now': iso,
-                  ':exp': p.usage.expiresAt,
-                  ':limit': p.usage.dailyLimit,
-                },
-              },
-            },
-            {
-              Update: {
-                TableName: this.table,
-                Key: { PK: userPk, SK: keys.usageHourly(p.usage.hourKey) },
-                UpdateExpression: 'ADD requests :one SET expiresAt = :exp',
-                ConditionExpression: 'attribute_not_exists(requests) OR requests < :limit',
-                ExpressionAttributeValues: { ':one': 1, ':exp': p.usage.expiresAt, ':limit': p.usage.hourlyLimit },
-              },
-            },
           ],
         }),
       );
@@ -477,14 +418,12 @@ export class ChatRepository {
       const reasons: StartRunFailure[] = [];
       if (codes[0] === 'ConditionalCheckFailed') reasons.push('duplicate');
       if (codes[3] === 'ConditionalCheckFailed') reasons.push('busy_or_gone');
-      if (codes[4] === 'ConditionalCheckFailed') reasons.push('quota_daily');
-      if (codes[5] === 'ConditionalCheckFailed') reasons.push('quota_hourly');
       if (reasons.length === 0) reasons.push('unknown');
       throw new StartRunConflict(reasons);
     }
   }
 
-  /** 生成完了・失敗・中断の確定（本文・usage・出典の保存、RUN終了、ロック解放）とUsage日次行への実績加算 */
+  /** 生成完了・失敗・中断の確定（本文・usage・出典の保存、RUN終了、ロック解放） */
   async finishRun(p: FinishRunParams): Promise<boolean> {
     const iso = p.now.toISOString();
     const pk = keys.chat(p.chatId);
@@ -555,21 +494,6 @@ export class ChatRepository {
       // 遅延回復が先に interrupted 化した等。結果は保存しない（ロックは既に解放済み）
       committed = false;
     }
-    await this.db.send(
-      new UpdateCommand({
-        TableName: this.table,
-        Key: { PK: keys.user(p.ownerSub), SK: keys.usageDaily(p.dayKey) },
-        UpdateExpression:
-          'ADD actualInputTokens :in, actualOutputTokens :out, searches :search SET updatedAt = :now, expiresAt = if_not_exists(expiresAt, :exp)',
-        ExpressionAttributeValues: {
-          ':in': p.usage.inputTokens,
-          ':out': p.usage.outputTokens,
-          ':search': p.usage.searchCalls,
-          ':now': iso,
-          ':exp': p.usageExpiresAt,
-        },
-      }),
-    );
     return committed;
   }
 
@@ -625,25 +549,5 @@ export class ChatRepository {
       // 並行して回復・完了した。最新状態を読み直す
     }
     return (await this.getMeta(meta.chatId)) ?? meta;
-  }
-
-  /** テスト・管理用: ユーザーのUsage行を含め、パーティション内の全アイテムを列挙する */
-  async listUserPartition(ownerSub: string): Promise<Array<{ PK: string; SK: string }>> {
-    const out: Array<{ PK: string; SK: string }> = [];
-    let startKey: Record<string, unknown> | undefined;
-    do {
-      const res = await this.db.send(
-        new QueryCommand({
-          TableName: this.table,
-          KeyConditionExpression: 'PK = :pk',
-          ExpressionAttributeValues: { ':pk': keys.user(ownerSub) },
-          ProjectionExpression: 'PK, SK',
-          ...(startKey ? { ExclusiveStartKey: startKey } : {}),
-        }),
-      );
-      out.push(...((res.Items ?? []) as Array<{ PK: string; SK: string }>));
-      startKey = res.LastEvaluatedKey;
-    } while (startKey);
-    return out;
   }
 }

@@ -28,7 +28,6 @@ describe('loadApiConfig', () => {
   it('loads local config with spec defaults', () => {
     const c = loadApiConfig(localApiEnv);
     expect(c.mode).toBe('local');
-    expect(c.quota).toMatchObject({ dailyRequests: 20, hourlyRequests: 10, dailySearches: 20, timeZone: 'Asia/Tokyo' });
     expect(c.generation).toMatchObject({
       timeoutMs: 120_000,
       bffMaxDurationMs: 150_000,
@@ -65,7 +64,7 @@ describe('loadApiConfig', () => {
   });
 
   it('rejects invalid values', () => {
-    expect(() => loadApiConfig({ ...localApiEnv, QUOTA_DAILY_REQUESTS: 'abc' })).toThrow(/QUOTA_DAILY_REQUESTS/);
+    expect(() => loadApiConfig({ ...localApiEnv, MAX_OUTPUT_TOKENS: 'abc' })).toThrow(/MAX_OUTPUT_TOKENS/);
     expect(() => loadApiConfig({ ...localApiEnv, APP_MODE: 'prod' })).toThrow(ConfigError);
   });
 });

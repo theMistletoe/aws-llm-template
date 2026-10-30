@@ -17,5 +17,5 @@ const resumeFormatter = new Intl.DateTimeFormat('ja-JP', {
 /** メッセージの作成時刻（日本時間） */
 export const formatMessageTime = (iso: string) => timeFormatter.format(new Date(iso));
 
-/** クォータ再開時刻など（JST基準で表示。§3 UI要件10） */
+/** コード再送の再開時刻など（JST基準で表示） */
 export const formatResumeTime = (iso: string) => `${resumeFormatter.format(new Date(iso))}（日本時間）`;

@@ -32,7 +32,6 @@ describe('routing and authentication guard', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('サーバーに接続できませんでした');
     mockAuthenticated();
     mockChats();
-    server.use(http.get('*/api/v1/usage', () => HttpResponse.json({}, { status: 500 })));
     await user.click(screen.getByRole('button', { name: '再試行' }));
     expect(await screen.findByRole('heading', { name: '設定' })).toBeVisible();
   });

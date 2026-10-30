@@ -8,7 +8,6 @@ export const queryKeys = {
   chats: ['chats'] as const,
   chat: (chatId: string) => ['chat', chatId] as const,
   messages: (chatId: string) => ['messages', chatId] as const,
-  usage: ['usage'] as const,
 };
 
 /** 4xxは再試行しない（QueryClientの既定値として main.tsx で設定する） */
@@ -54,8 +53,4 @@ export function useMessages(chatId: string | undefined, options: { liveStream: b
   });
   const messages: ChatMessage[] = query.data ? [...query.data.pages].reverse().flatMap((p) => p.items) : [];
   return { ...query, messages };
-}
-
-export function useUsage() {
-  return useQuery({ queryKey: queryKeys.usage, queryFn: api.usage });
 }

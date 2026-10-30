@@ -68,16 +68,16 @@ test('XSSを含む入力・出力はスクリプトとして実行されず、�
   await expect(screen.getByText('<b>escaped</b>')).toBeVisible();
 });
 
-test('クォータ超過（429）では再開可能時刻をJSTで表示する', async ({ app, screen, browser }) => {
+test('生成中のチャット（409）への送信は案内を表示し、入力内容を残す', async ({ app, screen, browser }) => {
   await browser.route('**/api/v1/chats/*/stream', async (route) => {
     await route.fulfill({
-      status: 429,
-      json: { error: { code: 'QUOTA_EXCEEDED', message: '利用上限', requestId: 'x', retryable: true, retryAfter: '2026-10-29T15:00:00.000Z' } },
+      status: 409,
+      json: { error: { code: 'CHAT_BUSY', message: '応答を生成中です', requestId: 'x', retryable: true } },
     });
   });
   await login(app, screen, { path: '/login?next=%2Fchat%2Fnew' });
   await sendMessage(screen, 'もう一度');
-  await expect(screen.getByRole('alert')).toContainText('利用上限に達しました。10月30日 0:00（日本時間）以降に再開できます。');
+  await expect(screen.getByRole('alert')).toContainText('このチャットは応答を生成中です。');
   await expect(screen.getByLabel('メッセージ')).toHaveValue('もう一度');
 });
 

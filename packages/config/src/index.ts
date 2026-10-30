@@ -70,11 +70,6 @@ const apiEnvSchema = z.object({
   AGENT_RUNTIME_QUALIFIER: z.string().min(1).default('DEFAULT'),
   MODEL_ID: z.string().min(1).default('jp.anthropic.claude-haiku-5-5'),
   WEB_SEARCH_ENABLED: bool(true),
-  QUOTA_DAILY_REQUESTS: int(20, 1),
-  QUOTA_HOURLY_REQUESTS: int(10, 1),
-  QUOTA_DAILY_SEARCHES: int(20, 0),
-  QUOTA_TIMEZONE: z.string().min(1).default('Asia/Tokyo'),
-  USAGE_RETENTION_DAYS: int(90, 1),
   CONTEXT_TURNS: int(10, 0),
   MAX_TOOL_CALLS: int(3, 0),
   MAX_OUTPUT_TOKENS: int(2048, 1),
@@ -109,13 +104,6 @@ export type ApiConfig = {
     | { backend: 'agentcore'; runtimeArn: string; qualifier: string };
   modelId: string;
   webSearchEnabled: boolean;
-  quota: {
-    dailyRequests: number;
-    hourlyRequests: number;
-    dailySearches: number;
-    timeZone: string;
-    retentionDays: number;
-  };
   generation: {
     contextTurns: number;
     maxToolCalls: number;
@@ -177,13 +165,6 @@ export function loadApiConfig(env: Env = process.env): ApiConfig {
     agent,
     modelId: e.MODEL_ID,
     webSearchEnabled: e.WEB_SEARCH_ENABLED,
-    quota: {
-      dailyRequests: e.QUOTA_DAILY_REQUESTS,
-      hourlyRequests: e.QUOTA_HOURLY_REQUESTS,
-      dailySearches: e.QUOTA_DAILY_SEARCHES,
-      timeZone: e.QUOTA_TIMEZONE,
-      retentionDays: e.USAGE_RETENTION_DAYS,
-    },
     generation: {
       contextTurns: e.CONTEXT_TURNS,
       maxToolCalls: e.MAX_TOOL_CALLS,
